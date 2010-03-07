@@ -1,0 +1,6 @@
+Revision history for Perl extension CCCP::Encode.
+
+0.01  Sun Mar  7 15:43:19 2010
+	- original version; created by h2xs 1.23 with options
+		-XA -n CCCP::Encode
+
