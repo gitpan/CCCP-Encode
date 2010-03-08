@@ -7,7 +7,7 @@ use Encode;
 use Text::Unidecode;
 use HTML::Entities;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 $CCCP::Encode::ToText = 0;
 $CCCP::Encode::CharMap = {};
@@ -52,13 +52,19 @@ sub __err_msg {
 1;
 __END__
 
+=encoding utf-8
+
 =head1 NAME
 
 B<CCCP::Encode> - Perl extension for character encodings from utf-8 to any cyrillic (koi8-r, windows-1251, etc.)
 
+=head1 This document in russian language
+
+L<CCCP::Encode::russian>
+
 =head1 SYNOPSIS
     
-    use CCCP::Encode; 
+    use CCCP::Encode;
     
     my $str = "если в слове 'хлеб' поменять 4 буквы, то получится — ПИВО";
          
@@ -104,7 +110,7 @@ And can override regexp for replace character.
 
 =head2 INTRODUCTION
 
-Ajax library (on frontend) send data in utf-8. If you have backand on C<koi8-r>, C<windows-1251>, etc. You have problem:
+Ajax library (on frontend) send data in utf-8. If you have backend on C<koi8-r>, C<windows-1251>, etc. You have problem:
 
     use Encode;
     ...
