@@ -5,41 +5,56 @@ use warnings;
 
 use Encode;
 use Text::Unidecode;
-use HTML::Entities;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 $CCCP::Encode::ToText = 0;
+$CCCP::Encode::Entities = 'xml';
 $CCCP::Encode::CharMap = {};
-$CCCP::Encode::Regexp = '[^\p{Cyrillic}|\p{IsLatin}]';
+$CCCP::Encode::Regexp = '[^\p{Cyrillic}|\p{IsLatin}|\p{InBasic_Latin}]';
+
+my $xml_entities = {
+	'&' => '&amp;',
+	'"' => '&#x22;',
+	"'" => '&#x27;',
+	'>' => '&gt;',
+	'<' => '&lt;'
+};
 
 my $f = find_encoding('utf-8');
+my $t = undef;
 __err_msg("Unknown encoding 'utf-8'") unless defined $f;
 
 sub utf2cyrillic {
     my ( $class, $str, $to ) = @_;
     
-    __err_msg("wtf with arguments?") unless ( $class and $class eq __PACKAGE__ );
     if ($CCCP::Encode::ToText and not UNIVERSAL::isa($CCCP::Encode::CharMap,'HASH') ) {
         __err_msg("\$CCCP::Encode::CharMap must be hash ref");
     };
+    
     return undef unless defined $str;
+    
     __err_msg("missing 'to' argument") unless $to;
     return $str if ($to =~ /^utf/i);
 
-    my $t = find_encoding($to);
+    $t = find_encoding($to) unless ($t and $t->name eq $to);
     __err_msg("Unknown encoding '$to'") unless defined $t;
 	
-    Encode::_utf8_off($str);        
-    ($str = $f->decode($str)) =~ s/($CCCP::Encode::Regexp)/
-        exists $CCCP::Encode::CharMap->{$1} ?
-            $CCCP::Encode::CharMap->{$1} :
-                    (
-                        $CCCP::Encode::ToText ?
-                            unidecode($1) :
-                            encode_entities($1)
-                    )/sexg;
-    return $t->encode($str);
+    Encode::_utf8_off($str);
+    
+    unless ($CCCP::Encode::ToText) {
+	    # decode with html entities
+        $CCCP::Encode::Entities ||= 'xml';
+    	my $str = $t->encode($f->decode($str), $CCCP::Encode::Entities eq 'xml' ? Encode::FB_XMLCREF : Encode::FB_HTMLCREF);
+    	if ($CCCP::Encode::Entities eq 'xml') {
+    		$str =~ s/('|"|<|>|&(?!#x))/$xml_entities->{$1}/geo;
+    	};
+    	return $str;
+    } else {
+    	# decode in text mode
+	    ($str = $f->decode($str)) =~ s/($CCCP::Encode::Regexp)/exists $CCCP::Encode::CharMap->{$1} ? $CCCP::Encode::CharMap->{$1} : unidecode($1)/sexg;
+	    return $t->encode($str);
+    };
 }
 
 sub __err_msg {
@@ -58,20 +73,39 @@ __END__
 
 B<CCCP::Encode> - Perl extension for character encodings from utf-8 to any cyrillic (koi8-r, windows-1251, etc.)
 
-=head1 This document in russian language
-
-L<CCCP::Encode::russian>
+I<Version 0.03>
 
 =head1 SYNOPSIS
     
     use CCCP::Encode;
     
+    $CCCP::Encode::ToText = 0; # default
+    $CCCP::Encode::Entities = 'xml'; # default    
     my $str = "если в слове 'хлеб' поменять 4 буквы, то получится — ПИВО";
-         
     print CCCP::Encode->utf2cyrillic($str,'koi8-r');
     # output in koi8-r:
-    # если в слове &#39;хлеб&#39; поменять 4 буквы, то получится &mdash; ПИВО 
-	 
+    # если в слове &#x27;хлеб&#x27; поменять 4 буквы, то получится &#x2014; ПИВО
+    
+    $str = "Иероглифы: 牡 マ キ グ ナ ル フ";
+    print CCCP::Encode->utf2cyrillic($str,'windows-1251');
+    # output in windows-1251:
+    # Иероглифы: &#x7261; &#x30de; &#x30ad; &#x30b0; &#x30ca; &#x30eb; &#x30d5; 
+	
+	--------------------------
+	
+	$CCCP::Encode::ToText = 0; # default
+	$CCCP::Encode::Entities = 'html';	     
+    print CCCP::Encode->utf2cyrillic($str,'koi8-r');
+    # output in koi8-r:
+    # если в слове 'хлеб' поменять 4 буквы, то получится &#8212; ПИВО
+
+    $str = "Иероглифы: 牡 マ キ グ ナ ル フ";
+    print CCCP::Encode->utf2cyrillic($str,'windows-1251');
+    # output in windows-1251:
+    # Иероглифы: &#29281; &#12510; &#12461; &#12464; &#12490; &#12523; &#12501;
+    
+    --------------------------
+    	 
     $CCCP::Encode::ToText = 1;
     print CCCP::Encode->utf2cyrillic($str,'koi8-r');
     # output in koi8-r:
@@ -82,12 +116,6 @@ L<CCCP::Encode::russian>
     # output in koi8-r:
     # если в слове 'хлеб' поменять 4 буквы, то получится - ПИВО  
     
-    $CCCP::Encode::ToText = 0;
-    $str = "Иероглифы: 牡 マ キ グ ナ ル フ";
-    print CCCP::Encode->utf2cyrillic($str,'windows-1251');
-    # output in windows-1251:
-    # Иероглифы: &#x7261; &#x30DE; &#x30AD; &#x30B0; &#x30CA; &#x30EB; &#x30D5;
-
 =head1 DESCRIPTION
 
 This module convert utf string to cyrillic in two mode:
@@ -140,6 +168,13 @@ C<$str> target string. C<$to> encoding name, analogue C<$to> in C<Encode::from_t
 
 =head2 PACKAGE VARIABLES
 
+=head3 $CCCP::Encode::Entities
+
+Ignored if $CCCP::Encode::ToText is true.
+Default value 'xml'.
+'xml' mode - replace all uncnown character in traget charset to valid xml numeric entities (i.e. &#x2014;).
+'html' mode - replace all uncnown character in traget charset to html numeric entities (i.e. &#8212;).
+
 =head3 $CCCP::Encode::ToText
 
 Default is false. 
@@ -167,10 +202,24 @@ Example:
 
 =head3 $CCCP::Encode::Regexp
 
-By default value is C<[^\p{Cyrillic}|\p{IsLatin}]>  - replace any character which not in Cyrillic or Latin map exist. 
+By default value is C<[^\p{Cyrillic}|\p{IsLatin}|\p{InBasic_Latin}]>  - replace any character which not in Cyrillic or Latin map exist. 
 You can override this expression. 
 
 See more on C<http://www.regular-expressions.info/unicode.html>
+
+=head1 OVERHEAD
+
+    CCCP::Encode with $CCCP::Encode::Entities eq "html":  
+        2 wallclock secs ( 1.63 usr +  0.01 sys =  1.64 CPU) @ 60975.61/s (n=100000)
+    
+    CCCP::Encode with $CCCP::Encode::Entities eq "xml":  
+        3 wallclock secs ( 2.49 usr +  0.00 sys =  2.49 CPU) @ 40160.64/s (n=100000)
+    
+    CCCP::Encode with $CCCP::Encode::ToText eq "1":  
+        4 wallclock secs ( 3.85 usr +  0.02 sys =  3.87 CPU) @ 25839.79/s (n=100000)
+            
+    Encode::from_to(...) :  
+        2 wallclock secs ( 1.93 usr +  0.01 sys =  1.94 CPU) @ 51546.39/s (n=100000)
 
 =head1 SEE ALSO
 
@@ -182,10 +231,6 @@ C<Encode>
 
 =item *
 
-C<HTML::Entities>
-
-=item *
-
 C<Text::Unidecode>
 
 =back
@@ -193,11 +238,5 @@ C<Text::Unidecode>
 =head1 AUTHOR
 
 Ivan Sivirinov
-
-=head1 COPYRIGHT AND LICENSE
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8 or,
-at your option, any later version of Perl 5 you may have available.
 
 =cut

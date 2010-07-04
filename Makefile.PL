@@ -7,7 +7,6 @@ WriteMakefile(
     VERSION_FROM      => 'lib/CCCP/Encode.pm', # finds $VERSION
     PREREQ_PM         => {
     	                   Encode => 0, # 2.23,
-    	                   HTML::Entities => 0, # 3.60
     	                   Text::Unidecode => 0, # 0.04
     	                   Carp => 0, # 1.08
     },

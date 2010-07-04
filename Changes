@@ -7,3 +7,7 @@ Revision history for Perl extension CCCP::Encode.
 0.02  Sun Mar  7 15:43:19 2010
     - fix pod
 
+0.03  Wen Jun  30 11:43:19 2010
+    - add InBasic_Latin in regexp
+    - optimize speed in entities mode
+    

@@ -4,4 +4,3 @@ MANIFEST
 README
 t/CCCP-Encode.t
 lib/CCCP/Encode.pm
-lib/CCCP/Encode/russian.pod
